@@ -1,0 +1,29 @@
+name: Test reaction-type (deprecated) input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REPOSITORY: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: comment
+        uses: .
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          issue-number: "1"
+          body: "Test comment using deprecated reaction-type input"
+          reaction-type: "+1"
+      - name: Assert comment-id is set
+        env:
+          COMMENT_ID: ${{ steps.comment.outputs.comment-id }}
+        run: |
+          echo "comment-id: $COMMENT_ID"
+          if [ -z "$COMMENT_ID" ]; then
+            echo "FAIL: expected comment-id to be non-empty"
+            exit 1
+          fi
+          echo "PASS"

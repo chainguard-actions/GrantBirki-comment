@@ -1,0 +1,42 @@
+name: Test comment with file template
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Create a markdown template file to use as the comment body
+      - name: Create template file
+        run: |
+          mkdir -p /tmp/comment-test
+          cat > /tmp/comment-test/comment.md << 'EOF'
+          ## Test Comment
+
+          Hello, **{{ name }}**!
+
+          This is a test comment from act.
+          EOF
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          token: fake-token-for-act-testing
+          repository: octocat/Hello-World
+          issue-number: "1"
+          file: /tmp/comment-test/comment.md
+          vars: |
+            name: World
+
+      - name: Assert action ran with file input
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ -z "$OUTCOME" ]; then
+            echo "FAIL: action outcome was not set"
+            exit 1
+          fi
+          echo "PASS: action ran with outcome=$OUTCOME"
