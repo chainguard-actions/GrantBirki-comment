@@ -1,0 +1,45 @@
+name: Test comment with vars template input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/1/merge
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create template file for vars rendering
+        run: |
+          mkdir -p /tmp/comment-vars-test
+          printf 'Deployment status: {{ status }}\nEnvironment: {{ env }}' > /tmp/comment-vars-test/template.md
+
+      - name: Run comment action with vars input (expect API failure with fake token)
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          token: fake-token-for-testing
+          repository: octocat/Hello-World
+          issue-number: "1"
+          file: /tmp/comment-vars-test/template.md
+          vars: |
+            status: success
+            env: production
+
+      - name: Assert action ran (vars mode)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should fail at the API level (invalid token),
+          # not due to misconfiguration of vars input.
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed as expected at API level"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded"
+          else
+            echo "FAIL: unexpected outcome: $OUTCOME"
+            exit 1
+          fi

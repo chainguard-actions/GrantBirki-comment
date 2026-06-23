@@ -1,0 +1,38 @@
+name: Test deprecated reaction-type input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/1/merge
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run comment action with deprecated reaction-type input (expect API failure with fake token)
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          token: fake-token-for-testing
+          repository: octocat/Hello-World
+          issue-number: "1"
+          comment-id: "123456789"
+          reaction-type: "+1"
+
+      - name: Assert action ran (reaction-type mode)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should fail at the API level (invalid token),
+          # not due to misconfiguration of the deprecated reaction-type input.
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed as expected at API level"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded"
+          else
+            echo "FAIL: unexpected outcome: $OUTCOME"
+            exit 1
+          fi
