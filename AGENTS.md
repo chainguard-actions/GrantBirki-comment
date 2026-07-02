@@ -1,0 +1,370 @@
+# AGENTS.md
+
+Guidance for agents and maintainers working in this repository.
+
+## Project Overview
+
+`comment` is a TypeScript GitHub Action for creating, updating, and reacting to
+GitHub issue and pull request comments. It is intended to be used from GitHub
+Actions workflows as `GrantBirki/comment@vX.X.X`.
+
+The action supports three primary workflows:
+
+- Creating a new issue or pull request comment from an inline `body`.
+- Creating or updating a comment from a Markdown file.
+- Rendering a Markdown file as a Nunjucks template using YAML `vars`.
+
+It also supports adding GitHub issue-comment reactions such as `eyes`, `rocket`,
+`heart`, `hooray`, `+1`, and `-1`. Reactions can be used while creating a
+comment, updating a comment, or as a reaction-only update against an existing
+comment.
+
+This is a checked-in bundled GitHub Action. Source lives under `src/`, but
+consumers run `dist/index.js` through `action.yml`. Any source or dependency
+change that affects runtime behavior must be followed by rebuilding and
+committing `dist/`.
+
+## Repository Layout
+
+- `action.yml` - GitHub Action metadata, inputs, outputs, branding, and Node
+  runtime. The action currently runs with `using: node24` and points to
+  `dist/index.js`.
+- `src/main.ts` - Minimal entrypoint that imports and awaits `run()` from
+  `src/comment.ts`.
+- `src/comment.ts` - Main implementation. This file owns input parsing,
+  repository and issue resolution, body/template rendering, comment creation,
+  comment updates, reaction validation, and GitHub API calls.
+- `src/version.ts` - Canonical action release version. Bumping this file on
+  `main` triggers the automated release workflow.
+- `test/comment.test.ts` - Node test runner unit tests. These tests mock the
+  local actions-core interface, GitHub client, and REST calls so most behavior
+  can be tested without network access.
+- `tsconfig.json` - Strict TypeScript configuration used by `npm run
+  typecheck`.
+- `dist/` - Bundled runtime produced by `ncc`. Do not edit this directory by
+  hand.
+- `demo/` - Example templates and sample workflow material used by the README
+  and acceptance workflow.
+- `.github/workflows/` - CI, package verification, acceptance, and automated
+  release workflows.
+- `README.md` - User-facing action documentation.
+- `CONTRIBUTING.md` - Currently only a placeholder.
+
+## Runtime Flow
+
+The runtime path is intentionally small:
+
+1. GitHub Actions loads `action.yml`.
+2. `action.yml` runs `dist/index.js`.
+3. `dist/index.js` is generated from `src/main.ts`.
+4. `src/main.ts` awaits `run()` from `src/comment.ts`.
+5. `run()` reads inputs, validates local state, resolves the body, creates the
+   local GitHub REST client, then either creates or updates a comment.
+
+Important functions in `src/comment.ts`:
+
+- `LocalActionsCore` implements the small GitHub Actions command/input/output
+  surface this action needs. Keep this narrow instead of reintroducing
+  `@actions/core`.
+- `getInputs()` reads action inputs via the injected actions-core interface. The deprecated
+  `reaction-type` input is still supported as a fallback when `reactions` is not
+  set.
+- `sanitizeInputs()` masks the token before debug logging. Keep this behavior
+  intact for any future logging changes.
+- `resolveIssueNumber()` prefers the explicit `issue-number` input, then falls
+  back to issue, pull request, or generic event `number` fields from
+  `github.context.payload`.
+- `resolveRepository()` validates `owner/repo` form and falls back to
+  `GITHUB_REPOSITORY` when the input is empty.
+- `createGithubClient()` and `LocalOctokit` implement the exact GitHub REST
+  calls this action uses. Keep this narrow instead of reintroducing Octokit or
+  `@actions/github`.
+- `parseVars()` parses a narrow YAML-compatible mapping subset for template
+  variables. Top-level scalars, top-level arrays, multi-document YAML, anchors,
+  aliases, merge keys, and custom tags are not accepted as valid template
+  variables.
+- `renderComment()` renders the selected file through Nunjucks.
+- `SafeTemplateLoader` constrains Nunjucks includes to files inside the selected
+  template directory, after resolving real paths. This is a security boundary.
+- `resolveBody()` enforces `body` XOR `file`; `vars` requires `file`.
+- `createComment()` creates a new issue comment and writes the `comment-id`
+  output.
+- `updateExistingComment()` updates an existing comment. `append` mode fetches
+  the old body first and appends a newline plus the new body. `replace` mode
+  skips the fetch and writes the new body directly.
+- `validReactions()` trims, validates, filters, and de-duplicates reaction
+  inputs.
+- `addReactions()` adds reactions concurrently, fails when no valid reactions
+  are provided, and fails the action if any GitHub reaction request is rejected.
+
+## Behavioral Rules To Preserve
+
+Preserve these semantics unless the requested change explicitly says otherwise:
+
+- `edit-mode` defaults to `append`.
+- Valid `edit-mode` values are only `append` and `replace`.
+- Creating a new comment requires `body` or `file`.
+- Updating an existing comment requires `body`, `file`, or `reactions`.
+- `body` and `file` are mutually exclusive.
+- `vars` without `file` is invalid.
+- `comment-id` takes the update path; absence of `comment-id` takes the create
+  path.
+- Missing both `issue-number` and `comment-id` is invalid.
+- `reactions` takes precedence over deprecated `reaction-type`.
+- Invalid reaction names are skipped, but a reaction input with no valid
+  reactions fails.
+- The `comment-id` output is set for both created comments and updated comments
+  with a body.
+- Token values must never be written to debug, info, or error logs.
+
+## Security and Safety Notes
+
+This action runs inside user workflows with a GitHub token, so small input
+handling changes can have real impact.
+
+- Treat template path handling as security-sensitive. `SafeTemplateLoader`
+  intentionally prevents absolute includes, traversal outside the template
+  directory, sibling-prefix escapes, missing-file access, and symlink escapes.
+  Add tests for any change in this area.
+- Keep the local `vars` parser constrained to the documented mapping subset.
+  Accepting broader YAML shapes can reintroduce parser complexity and surprise
+  users.
+- Nunjucks currently renders with `autoescape: true`; tests assert escaping for
+  unsafe values. Be explicit and well-tested if changing escaping behavior.
+- Avoid logging full input structures unless they pass through
+  `sanitizeInputs()`.
+- Do not loosen workflow permissions when editing CI. Use least-privilege
+  permissions blocks.
+- For new GitHub workflow jobs that only read repository content, prefer
+  `permissions: contents: read` and avoid persisted checkout credentials unless
+  a later step needs to push.
+- Existing workflows use pinned action SHAs with comments indicating the
+  intended major version. Preserve that style when changing workflow actions.
+
+## Development Environment
+
+Use the Node version declared by `.node-version`:
+
+```bash
+24.9.0
+```
+
+Install dependencies with:
+
+```bash
+npm ci
+```
+
+Common commands:
+
+```bash
+npm test
+npm run typecheck
+npm run package
+npm run bundle
+npm run all
+```
+
+What the commands do:
+
+- `npm test` compiles source and tests into `tmp/test-build` with `tsc`, then
+  runs `node --test --experimental-test-coverage` against the emitted test files.
+- `npm run ci-test` currently aliases `npm test`.
+- `npm run typecheck` runs `tsc --noEmit`.
+- `npm run package` runs `ncc build src/main.ts -o dist --source-map --license
+  licenses.txt`. It sets `NODE_OPTIONS=--openssl-legacy-provider`.
+- `npm run bundle` currently aliases `package`.
+- `npm run all` runs `typecheck`, `test`, and `package`.
+
+Generated bundles are verified by rebuilding, not formatted directly.
+
+## Making Code Changes
+
+Use this process for runtime changes:
+
+1. Edit `src/comment.ts` or `src/main.ts`.
+2. Add or update focused tests in `test/comment.test.ts`.
+3. Run `npm test`.
+4. Run `npm run typecheck` and `npm test`, or run `npm run all` when a full local
+   pass is appropriate.
+5. Rebuild `dist/` with `npm run package` or `npm run bundle`.
+6. Inspect the diff and confirm both source and generated `dist/` changes are
+   intentional.
+
+Do not manually patch generated files in `dist/` except in an emergency where
+the generated output is being repaired from a known-good build artifact. The
+normal path is always to change source and rebuild.
+
+When adding a new input or output:
+
+1. Update `action.yml`.
+2. Update `README.md` input/output documentation and examples where relevant.
+3. Update `src/comment.ts` input parsing and behavior.
+4. Add tests for the new contract.
+5. Rebuild `dist/`.
+
+When changing public behavior, keep the README, demo files, tests, and
+acceptance workflow aligned. This repository is small enough that stale docs are
+usually avoidable.
+
+## Testing Strategy
+
+The unit tests are the primary fast feedback path. They cover:
+
+- Input parsing and deprecated input compatibility.
+- YAML variable parsing.
+- Template rendering and escaping.
+- Template include restrictions.
+- Symlink and path traversal rejection.
+- Issue-number fallback behavior.
+- Repository validation.
+- Token masking.
+- Reaction validation, de-duplication, and failure behavior.
+- Create, update, replace, append, and reaction-only action paths.
+- Early validation failures before constructing a GitHub REST client.
+- The special README hint for `Resource not accessible by integration`.
+
+Test helpers in `test/comment.test.ts` include:
+
+- `makeCore()` for mocked actions-core behavior and call recording.
+- `makeOctokit()` for mocked GitHub REST calls.
+- `makeGithubClient()` for mocked GitHub client behavior.
+- `writeTemplate()` and `writeTemplates()` for temporary template files.
+
+Prefer extending these helpers over introducing network-dependent tests.
+
+## CI Workflows
+
+The CI workflows are intentionally separated:
+
+- `.github/workflows/test.yml` runs unit tests on pull requests, pushes to
+  `main`, and manual dispatch.
+- `.github/workflows/lint.yml` is the typecheck workflow on pull requests and
+  pushes to `main`.
+- `.github/workflows/package-check.yml` rebuilds `dist/` and fails if generated
+  output differs from what is committed. If the diff check fails, it uploads the
+  rebuilt `dist/` as an artifact.
+- `.github/workflows/acceptance.yml` runs on pull requests and exercises the
+  local action with real GitHub API calls. It creates comments, verifies bodies,
+  tests deprecated `reaction-type`, validates template rendering, checks append
+  and replace modes, checks reaction-only updates, and confirms invalid-only
+  reactions fail.
+- `.github/workflows/release.yml` runs on pushes to `main` that change
+  `src/version.ts`. It validates the committed bundle, creates the immutable
+  release tag, creates provenance attestations, creates a GitHub release, and
+  moves the matching major tag.
+
+When changing workflows, follow the pattern used here and in
+`/Users/birki/code/branch-deploy`: clear job names, explicit permissions,
+pinned or otherwise intentional action versions, `npm ci`, Node from
+`.node-version`, and package-diff verification for bundled action output.
+
+## Release Process
+
+This project uses semver-style release tags such as `v1.2.3`.
+
+High-level release flow:
+
+1. Update `src/version.ts` to the next stable `vX.Y.Z` version.
+2. Make the source, tests, docs, and `dist/` changes for the release in the
+   same pull request.
+3. Merge the pull request to protected `main`.
+4. Let `.github/workflows/release.yml` validate the bundle, create the
+   immutable release tag, create provenance attestations for `action.yml` and
+   `dist/**`, create the GitHub release with generated notes, and move the
+   matching major tag such as `v3`.
+
+`src/version.ts` is the only release version source. `package.json` intentionally
+keeps `0.0.0` because this repository is released as a GitHub Action, not an npm
+package.
+
+## Documentation
+
+`README.md` is the public contract for action users. Keep it aligned with:
+
+- `action.yml` input names, defaults, required fields, and outputs.
+- Actual behavior in `src/comment.ts`.
+- Demo files in `demo/`.
+- Permission requirements in workflows that use this action.
+
+Important README troubleshooting topics:
+
+- `Missing either 'issue-number' or 'comment-id'`.
+- `Repository Not Found` when a workflow needs checkout access for template
+  files.
+- `Resource not accessible by integration`, especially for forked public
+  repository pull requests and insufficient write permissions.
+- Cross-repository comments requiring a PAT with write access.
+
+## Dependency Notes
+
+Runtime dependencies:
+
+- `nunjucks`
+
+Development dependencies:
+
+- `@vercel/ncc`
+- `typescript`
+- `@types/node`
+- `@types/nunjucks`
+
+`package-lock.json` is committed. Use `npm ci` for reproducible installs and
+commit lockfile changes when intentionally changing dependencies.
+
+Do not reintroduce `@actions/core`, `@actions/github`, `js-yaml`, `tsx`, ESLint,
+or Prettier without a fresh dependency-reduction review.
+
+## Style Guidelines
+
+- Keep implementation changes small and explicit. This action's value is in
+  predictable comment behavior, not framework complexity.
+- Prefer pure helper functions that can be unit tested without a live GitHub
+  token.
+- Preserve dependency injection in `run({actionsCore, githubClient, env})`;
+  tests rely on it and it keeps behavior easy to verify.
+- Keep public error messages stable where practical. README examples and tests
+  may rely on them.
+- Add tests for all new user-visible validation branches.
+- Keep generated output separate from source review. Review source first, then
+  confirm `dist/` is the expected bundle output.
+- Avoid introducing new build systems or test frameworks unless there is a clear
+  maintenance win.
+
+## Common Pitfalls
+
+- Forgetting to rebuild `dist/` after editing `src/`.
+- Updating `action.yml` without updating README input tables and tests.
+- Adding a template feature that bypasses `SafeTemplateLoader`.
+- Logging raw inputs that include `token`.
+- Assuming `issue-number` is always present. Many workflows rely on fallback
+  from the GitHub event payload.
+- Treating invalid reactions as fatal individually. Current behavior skips
+  invalid names, but fails when the final valid set is empty.
+- Breaking deprecated `reaction-type` compatibility.
+- Running acceptance-style checks locally without a real GitHub token and a pull
+  request context. Use unit tests for local development.
+
+## Quick Local Checklist
+
+For documentation-only changes:
+
+```bash
+git diff --check
+```
+
+For source changes:
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run package
+git diff --check
+```
+
+For source changes that may affect public usage, also review:
+
+```bash
+git diff -- README.md action.yml demo/ src/ test/ dist/
+```

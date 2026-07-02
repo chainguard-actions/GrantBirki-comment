@@ -1,0 +1,37 @@
+{
+  "name": "comment",
+  "version": "0.0.0",
+  "description": "GitHub Action to create, update, or add a reaction to any issue or pull request",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "pretest": "rm -rf tmp/test-build && tsc --outDir tmp/test-build --rootDir .",
+    "posttest": "rm -rf tmp/test-build",
+    "package": "NODE_OPTIONS=--openssl-legacy-provider ncc build src/main.ts -o dist --source-map --license licenses.txt",
+    "test": "node --test --experimental-test-coverage tmp/test-build/test/*.test.js",
+    "ci-test": "npm test",
+    "all": "npm run typecheck && npm test && npm run package",
+    "bundle": "npm run package"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GrantBirki/comment.git"
+  },
+  "keywords": [],
+  "author": "Grant Birkinbine",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/GrantBirki/comment/issues"
+  },
+  "homepage": "https://github.com/GrantBirki/comment",
+  "dependencies": {
+    "nunjucks": "^3.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/nunjucks": "^3.2.6",
+    "@vercel/ncc": "^0.38.4",
+    "typescript": "^6.0.3"
+  }
+}

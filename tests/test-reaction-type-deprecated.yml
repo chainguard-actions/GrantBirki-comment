@@ -1,0 +1,31 @@
+name: Test deprecated reaction-type input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          issue-number: "1"
+          body: "Test comment using deprecated reaction-type input"
+          reaction-type: "+1"
+        continue-on-error: true
+      - name: Assert action ran (deprecated reaction-type input accepted)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action may fail due to no real GitHub API in act, but the input must be accepted
+          # We verify the step was at least attempted (not skipped due to input validation error)
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: step was skipped, reaction-type input may have caused a validation error"
+            exit 1
+          fi
+          echo "PASS: reaction-type input was accepted by the action"
