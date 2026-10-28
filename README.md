@@ -6,14 +6,14 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 ## Versions
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v2.0.10 | [`v2.0.10`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.0.10) | [`1e63d57`](https://github.com/GrantBirki/comment/commit/1e63d57e8ccc14dd83f5db2af382279aa12a0bbb) |
-| v2.0.9 | [`v2.0.9`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.0.9) | [`d5cdf02`](https://github.com/GrantBirki/comment/commit/d5cdf0243751ca01060946b2cae3722e508b7b16) |
-| v2.1.0 | [`v2.1.0`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.1.0) | [`f524ee3`](https://github.com/GrantBirki/comment/commit/f524ee31407667c05061bad41e1758b40298bd82) |
-| v2.1.1 | [`v2.1.1`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.1.1) | [`608e41b`](https://github.com/GrantBirki/comment/commit/608e41b19bc973020ec0e189ebfdae935d7fe0cc) |
-| v3.0.0 | [`v3.0.0`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v3.0.0) | [`3439715`](https://github.com/GrantBirki/comment/commit/3439715f0cf3b8fc29bf47be0e3226679c06c41a) |
-| v3.0.3 | [`v3.0.3`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v3.0.3) | [`937820f`](https://github.com/GrantBirki/comment/commit/937820f3623fd0e300294bcc64ac7577fc0ad4cc) |
+| Version | Tag | Upstream commit | Hardening report |
+|---------|-----|-----------------|------------------|
+| v2.0.10 | [`v2.0.10`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.0.10) | [`1e63d57`](https://github.com/GrantBirki/comment/commit/1e63d57e8ccc14dd83f5db2af382279aa12a0bbb) | [`HARDENING.md`](https://github.com/chainguard-actions/GrantBirki-comment/blob/v2.0.10/HARDENING.md) |
+| v2.0.9 | [`v2.0.9`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.0.9) | [`d5cdf02`](https://github.com/GrantBirki/comment/commit/d5cdf0243751ca01060946b2cae3722e508b7b16) | [`HARDENING.md`](https://github.com/chainguard-actions/GrantBirki-comment/blob/v2.0.9/HARDENING.md) |
+| v2.1.0 | [`v2.1.0`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.1.0) | [`f524ee3`](https://github.com/GrantBirki/comment/commit/f524ee31407667c05061bad41e1758b40298bd82) | [`HARDENING.md`](https://github.com/chainguard-actions/GrantBirki-comment/blob/v2.1.0/HARDENING.md) |
+| v2.1.1 | [`v2.1.1`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v2.1.1) | [`608e41b`](https://github.com/GrantBirki/comment/commit/608e41b19bc973020ec0e189ebfdae935d7fe0cc) | [`HARDENING.md`](https://github.com/chainguard-actions/GrantBirki-comment/blob/v2.1.1/HARDENING.md) |
+| v3.0.0 | [`v3.0.0`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v3.0.0) | [`3439715`](https://github.com/GrantBirki/comment/commit/3439715f0cf3b8fc29bf47be0e3226679c06c41a) | [`HARDENING.md`](https://github.com/chainguard-actions/GrantBirki-comment/blob/v3.0.0/HARDENING.md) |
+| v3.0.3 | [`v3.0.3`](https://github.com/chainguard-actions/GrantBirki-comment/tree/v3.0.3) | [`937820f`](https://github.com/GrantBirki/comment/commit/937820f3623fd0e300294bcc64ac7577fc0ad4cc) | [`HARDENING.md`](https://github.com/chainguard-actions/GrantBirki-comment/blob/v3.0.3/HARDENING.md) |
 
 ## Privacy
 
